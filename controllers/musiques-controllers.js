@@ -1,8 +1,8 @@
 const mongoose = require('mongoose')
 
+const HttpError = require('../models/http-error');
+
 const Musique = require('../models/musique')
-
-
 
 // const MUSIQUES =[
 //     {
@@ -39,26 +39,40 @@ const Musique = require('../models/musique')
 const getMusiques = async (req, res, next) => {
     let musiques
     try {
-        musiques = await Musique.find();
-    } catch (error) {
-        console.log("erreur")
+      musiques = await Musique.find();
+    } catch (err) {
+      const error = new HttpError(
+        'Erreur lors de la récupération de la liste',
+        500
+      );
+      return next(error)
     }
-    res.json({ toutesMesMusiques: musiques.map(m => m.toObject({getters: true}))});
-}
+    res.json({ musiques: musiques.map(m => m.toObject({getters: true})) });
+  };
 
-const getMusiqueById = (req, res, next) => {
-    // Récupération du paramètre musiqueId passé dans l'url
-    const musiqueId = req.params.musiqueId;
-    // Scan de la Base de donnée pour renvoyer l'objet Musique pour l'id concerné
-    const musique = MUSIQUES.find(m => {
-        return m.id === musiqueId;
-    })
-    if(!musique){
-        return res.status(404).json({message : "Musique non trouvée pour cet identifiant"})
-    } 
-    // réponse au client intégrant les données de la musique concernée au format JSON
-    res.json({musique})
-}
+const getMusiqueById = async (req, res, next) => {
+    const musiqueId = req.params.musiqueid;
+  
+    let musique
+    try {
+      musique = await Musique.findById(musiqueId);
+    } catch (err) {
+      const error = new HttpError(
+        'Erreur lors de la récupération de la musique',
+        500
+      );
+      return next(error)
+    }
+    if (!musique) {
+      const error = new HttpError(
+        'Aucune musique trouvée pour cet id.',
+        404
+      );
+      return next(error);
+    }
+  
+    res.json({ musique: musique.toObject({ getters: true }) });
+  };
 
 const createMusique = async (req, res, next) => {
     const { auteur, annee, titre, imageUrl } = req.body;
@@ -75,12 +89,12 @@ const createMusique = async (req, res, next) => {
     try {
       await createdMusique.save();
       } catch (err) {
-    //   const error = new HttpError(
-    //     'L\'ajout de la Musique n\'a pas fonctionné. Veuillez réessayer.',
-    //     500
-    //   );
-    //   return next(error);
-    console.log(erreur)
+      const error = new HttpError(
+        'L\'ajout de la Musique n\'a pas fonctionné. Veuillez réessayer.',
+        500
+      );
+      return next(error);
+    // console.log(erreur)
     }
     
   
@@ -89,6 +103,75 @@ const createMusique = async (req, res, next) => {
     res.status(201).json({musique: createdMusique});
   };
 
+  const updateMusique = async (req, res, next) => {
+    const { auteur, annee, titre, imageUrl } = req.body;
+    const musiqueId = req.params.musiqueid;
+    let musique;
+    try {
+      musique = await Musique.findById(musiqueId);
+    } catch (err) {
+      const error = new HttpError(
+        'Aucune musique trouvée pour cet id.',
+        500
+      );
+      return next(error);
+    }
+  
+    musique.auteur = auteur;
+    musique.annee = annee;
+    musique.titre = titre;
+    musique.imageUrl = imageUrl;
+  
+    try {
+      await musique.save();
+    } catch (err) {
+      const error = new HttpError(
+        'Erreur lors de la mise à jour de cette musique.',
+        500
+      );
+      return next(error);
+    }
+  
+    res.status(200).json({musique: musique.toObject({ getters: true })});
+  };
+  
+  const deleteMusique = async (req, res, next) => {
+    const musiqueId = req.params.musiqueid;
+    //retourne une nouvelle array filtré
+    // MUSIQUES = MUSIQUES.filter(m => m.id !== musiqueId);
+    let musique;
+    try {
+      musique = await Musique.findById(musiqueId)
+    } catch (err){
+      const error = new HttpError(
+        'Erreur lors de la suppression de cette musique',
+        500
+      );
+      return next(error);
+    }
+    if (!musique){
+      const error = new HttpError(
+        'Aucune musique trouvée pour cet id',
+        404
+      );
+      return next(error);
+    }
+    try{
+      await musique.remove();
+    } catch (err) {
+      const error = new HttpError(
+        'Erreur lors de la suppression de cette musique.',
+        500
+      );
+      return next(error);
+    }
+    res.status(200).json({ message: "Musique supprimée!" });
+  };
+  
+  
+
 exports.getMusiques = getMusiques;
 exports.getMusiqueById = getMusiqueById;
 exports.createMusique = createMusique;
+exports.updateMusique = updateMusique;
+exports.deleteMusique = deleteMusique;
