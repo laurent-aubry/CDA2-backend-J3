@@ -1,14 +1,13 @@
 const express = require('express')
 
+const musiquesControllers = require('../controllers/musiques-controllers')
+
 const router = express.Router();
 
+router.get('/', musiquesControllers.getMusiques );
 
-router.get('/', (req, res, next) => {
-    console.log("Liste des musiques")
-    res.json({message: "Mes musiques"})
-})
+router.get('/:musiqueId', musiquesControllers.getMusiqueById );
 
-
-
+router.post('/', musiquesControllers.createMusique)
 
 module.exports = router;
